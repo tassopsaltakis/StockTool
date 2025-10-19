@@ -127,7 +127,7 @@ class PriceAxis(pg.graphicsItems.AxisItem.AxisItem):
 
 
 class PGChart(QtWidgets.QWidget):
-    """Fast pyqtgraph chart: legend, crosshair, series toggles, color palette, and proper scaling."""
+    """Fast pyqtgraph chart using PlotCurveItem + high-variance palette, crosshair, and series toggles."""
     def __init__(self, parent=None):
         super().__init__(parent)
         lay = QtWidgets.QVBoxLayout(self)
@@ -139,15 +139,13 @@ class PGChart(QtWidgets.QWidget):
         self.plot.showGrid(x=True, y=True, alpha=0.25)
         self.plot.setLabel('bottom', 'Date')
         self.plot.setLabel('left', 'Price')
-        self.plot.addLegend(offset=(10, 10))
-        self.plot.enableAutoRange('xy', True)
         self.plot.setMouseEnabled(x=True, y=True)
         self.plot.setClipToView(True)
         self.plot.getViewBox().setDefaultPadding(0.05)  # nice margin
 
         # Crosshair items
-        self._vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen((180,180,180,120)))
-        self._hline = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen((180,180,180,120)))
+        self._vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen((180, 180, 180, 120)))
+        self._hline = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen((180, 180, 180, 120)))
         self.plot.addItem(self._vline, ignoreBounds=True)
         self.plot.addItem(self._hline, ignoreBounds=True)
 
@@ -155,7 +153,7 @@ class PGChart(QtWidgets.QWidget):
         self.readout = QtWidgets.QLabel("Hover for values")
         self.readout.setStyleSheet("color: gray;")
 
-        # Series toggle panel
+        # Series toggle panel (we rely on this instead of a legend)
         self.series_group = QtWidgets.QGroupBox("Series")
         self.series_layout = QtWidgets.QVBoxLayout(self.series_group)
         self.series_layout.setContentsMargins(8, 8, 8, 8)
@@ -171,23 +169,83 @@ class PGChart(QtWidgets.QWidget):
         lay.addWidget(self.series_group, 0)
 
         # Data holders
-        self._series: Dict[str, pg.PlotDataItem] = {}   # label -> item
-        self._data_cache: Dict[str, Tuple['np.ndarray', 'np.ndarray']] = {}  # label -> (xs, ys) np arrays
+        self._series: Dict[str, pg.PlotCurveItem] = {}   # label -> curve
+        self._data_cache: Dict[str, Tuple['np.ndarray', 'np.ndarray']] = {}  # label -> (xs, ys)
         self._palette_idx = 0
+        self._palette = self._make_palette()  # rich, diverse palette
 
         # Crosshair / hover
         self.plot.setMouseTracking(True)
         self.plot.scene().sigMouseMoved.connect(self._on_mouse_moved)
 
-    # ---------- utils ----------
-    def _next_pen(self) -> pg.mkPen:
-        """Distinct, evenly spaced colors."""
-        pen = pg.mkPen(pg.intColor(self._palette_idx, hues=24), width=2)  # 24 distinct hues
-        self._palette_idx += 1
-        return pen
+    # ---------- color utilities ----------
+    def _make_palette(self):
+        """
+        Build a large, diverse, non-orange-biased palette:
+        1) Start with colorblind-safe Okabe–Ito and Tableau 20 (high quality, varied).
+        2) Continue with a golden-ratio HSV sweep to generate unlimited distinct hues.
+        3) Boost brightness/contrast for dark backgrounds.
+        """
+        def qc(r, g, b, a=255):
+            return QtGui.QColor(int(r), int(g), int(b), int(a))
 
+        # Okabe–Ito (10) — colorblind safe
+        okabe_ito = [
+            qc(  0, 114, 178),  # blue
+            qc(213,  94,   0),  # vermillion
+            qc( 86, 180, 233),  # sky blue
+            qc(230, 159,   0),  # orange
+            qc(  0, 158, 115),  # bluish green
+            qc(240, 228,  66),  # yellow
+            qc(204, 121, 167),  # reddish purple
+            qc(  0,   0,   0),  # black (use sparingly)
+            qc(148,  52, 110),  # magenta-ish (extra)
+            qc( 50,  50,  50),  # dark gray (extra)
+        ]
+
+        # Tableau 20 (subset reordered for contrast)
+        tableau20 = [
+            qc( 31, 119, 180), qc(255, 127, 14),  qc( 44, 160,  44), qc(214,  39,  40),
+            qc(148, 103, 189), qc(140,  86, 75),  qc(227, 119, 194), qc(127, 127, 127),
+            qc(188, 189,  34), qc( 23, 190, 207), qc(174, 199, 232), qc(255, 187, 120),
+            qc(152, 223, 138), qc(255, 152, 150), qc(197, 176, 213), qc(196, 156, 148),
+            qc(247, 182, 210), qc(199, 199, 199), qc(219, 219, 141), qc(158, 218, 229)
+        ]
+
+        # Start with curated sets
+        palette = []
+        for c in okabe_ito + tableau20:
+            # avoid very dark near-black on black backgrounds
+            if c.red() < 30 and c.green() < 30 and c.blue() < 30:
+                c = qc(90, 90, 90)
+            palette.append(c)
+
+        # Then add a golden-ratio HSV sweep for virtually unlimited distinct colors
+        # Golden ratio conjugate ≈ 0.61803398875 — excellent for spacing hues
+        import math
+        h = 0.11  # seed hue (not orange)
+        gr = 0.61803398875
+        for _ in range(120):  # add 120 more distinct hues
+            h = (h + gr) % 1.0
+            # Keep saturation/value high for dark bg; nudge away from orange range [0.05..0.13]
+            if 0.05 <= h <= 0.13:
+                h = (h + 0.15) % 1.0
+            sat = 0.95
+            val = 0.98
+            c = QtGui.QColor.fromHsvF(h, sat, val, 1.0)
+            palette.append(c)
+
+        return palette
+
+    def _next_pen(self) -> pg.mkPen:
+        """Pick the next highly distinct color from our big palette."""
+        color = self._palette[self._palette_idx % len(self._palette)]
+        self._palette_idx += 1
+        return pg.mkPen(color, width=2)
+
+    # ---------- lifecycle ----------
     def clear(self):
-        # Remove curves but keep crosshair & legend
+        """Remove only our curves; keep crosshair intact."""
         for item in list(self._series.values()):
             try:
                 self.plot.removeItem(item)
@@ -195,9 +253,9 @@ class PGChart(QtWidgets.QWidget):
                 pass
         self._series.clear()
         self._data_cache.clear()
-        self._palette_idx = 0
+        self._palette_idx = 0  # restart palette cycle
 
-        # clear series panel checkboxes (except note + stretch)
+        # Clear series panel checkboxes (except note + stretch)
         while self.series_layout.count() > 2:
             item = self.series_layout.takeAt(1)
             w = item.widget()
@@ -205,21 +263,16 @@ class PGChart(QtWidgets.QWidget):
                 w.setParent(None)
                 w.deleteLater()
 
-        # restore crosshair if needed
+        # Ensure crosshair lines are present
         if self._vline not in self.plot.items():
             self.plot.addItem(self._vline, ignoreBounds=True)
         if self._hline not in self.plot.items():
             self.plot.addItem(self._hline, ignoreBounds=True)
 
-        # keep legend
-        try:
-            self.plot.addLegend(offset=(10, 10))
-        except Exception:
-            pass
-
-        # reset view autorange
+        # Reset view autorange
         self.plot.enableAutoRange('xy', True)
 
+    # ---------- data / series ----------
     def add_line(self, label: str, dates_utc_str: List[str], y_values: List[float]):
         import numpy as np
         # Convert to epoch seconds (UTC)
@@ -229,32 +282,30 @@ class PGChart(QtWidgets.QWidget):
         )
         ys = np.array(y_values, dtype=float)
 
-        # Fast line with downsampling/clipping
         pen = self._next_pen()
-        item = pg.PlotDataItem(
-            x=xs, y=ys, name=label, pen=pen,
-            antialias=False,        # fastest
-            clipToView=True,        # only draw visible
-            downsample='auto',      # auto downsample
-            downsampleMethod='peak' # preserve extrema
+
+        # Use PlotCurveItem (avoids PlotDataItem parent-change bugs)
+        curve = pg.PlotCurveItem(
+            x=xs, y=ys, pen=pen,
+            antialias=False,   # fastest
+            clipToView=True    # draw only the visible part
         )
-        self.plot.addItem(item)
+        self.plot.addItem(curve)
 
         # Cache & toggles
-        self._series[label] = item
+        self._series[label] = curve
         self._data_cache[label] = (xs, ys)
-        self._add_series_checkbox(label, item)
+        self._add_series_checkbox(label, curve)
 
         # Expand view to include new data
         self.plot.enableAutoRange('xy', True)
 
-    def _add_series_checkbox(self, label: str, item: pg.PlotDataItem):
+    def _add_series_checkbox(self, label: str, curve: pg.PlotCurveItem):
         cb = QtWidgets.QCheckBox(label)
         cb.setChecked(True)
 
         def _toggle(_state):
-            vis = cb.isChecked()
-            item.setVisible(vis)
+            curve.setVisible(cb.isChecked())
             # Re-autoscale on visibility change
             self.plot.enableAutoRange('xy', True)
 
@@ -262,6 +313,7 @@ class PGChart(QtWidgets.QWidget):
         # insert before final stretch
         self.series_layout.insertWidget(self.series_layout.count() - 1, cb)
 
+    # ---------- interaction ----------
     def _on_mouse_moved(self, pos):
         if not self._series:
             self.readout.setText("Hover for values")
@@ -296,8 +348,8 @@ class PGChart(QtWidgets.QWidget):
                 idx -= 1
             val = ys[idx]
             # Only show if series is visible
-            item = self._series.get(label)
-            if item is not None and item.isVisible():
+            curve = self._series.get(label)
+            if curve is not None and curve.isVisible():
                 lines.append(f"{label}: {val:,.2f}")
 
         self.readout.setText("   |   ".join(lines))
