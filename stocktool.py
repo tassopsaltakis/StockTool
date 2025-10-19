@@ -8,11 +8,12 @@ import datetime as dt
 import urllib.parse
 import requests
 from typing import Dict, List, Tuple
+from pathlib import Path
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 
-# ---------------- project constants ----------------
 APP_NAME = "StockTool"
+APP_VERSION = "1.0.0"  # optional, used for Windows AUMID
 SETTINGS_FILE = "settings.json"
 MODULES_DIR = "modules"
 
@@ -180,12 +181,7 @@ class PGChart(QtWidgets.QWidget):
 
     # ---------- color utilities ----------
     def _make_palette(self):
-        """
-        Build a large, diverse, non-orange-biased palette:
-        1) Start with colorblind-safe Okabe–Ito and Tableau 20 (high quality, varied).
-        2) Continue with a golden-ratio HSV sweep to generate unlimited distinct hues.
-        3) Boost brightness/contrast for dark backgrounds.
-        """
+
         def qc(r, g, b, a=255):
             return QtGui.QColor(int(r), int(g), int(b), int(a))
 
@@ -221,8 +217,6 @@ class PGChart(QtWidgets.QWidget):
             palette.append(c)
 
         # Then add a golden-ratio HSV sweep for virtually unlimited distinct colors
-        # Golden ratio conjugate ≈ 0.61803398875 — excellent for spacing hues
-        import math
         h = 0.11  # seed hue (not orange)
         gr = 0.61803398875
         for _ in range(120):  # add 120 more distinct hues
@@ -730,10 +724,33 @@ class StockTool(QtWidgets.QWidget):
             return super().closeEvent(event)
 
 
+# ---------------- Icons / Windows AUMID ----------------
+
+def _set_app_icon_and_aumid(app: QtWidgets.QApplication, window: QtWidgets.QWidget):
+    """Set window/taskbar icon and Windows AppUserModelID for correct taskbar grouping."""
+    ico_path = Path(__file__).parent / "assets" / "stocktool.ico"
+    if ico_path.exists():
+        icon = QtGui.QIcon(str(ico_path))
+        app.setWindowIcon(icon)     # affects taskbar / Alt+Tab in many cases
+        window.setWindowIcon(icon)  # explicit for title bar
+    else:
+        print(f"⚠️ Icon not found: {ico_path}")
+
+    # Windows taskbar grouping (AUMID)
+    if sys.platform.startswith("win"):
+        try:
+            import ctypes
+            aumid = f"{APP_NAME}.{APP_VERSION}"
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(aumid)
+        except Exception as e:
+            print(f"⚠️ Failed to set AppUserModelID: {e}")
+
+
 def main():
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     w = StockTool()
+    _set_app_icon_and_aumid(app, w)
     w.show()
     sys.exit(app.exec())
 
