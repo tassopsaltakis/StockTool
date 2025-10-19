@@ -12,7 +12,7 @@ StockTool is a modular, extensible desktop application built with Python and PyQ
 - Modular architecture: Add or remove user-created modules in the 'modules' directory.
 - Persistent settings: Module states are saved in settings.json.
 - Cross-platform compatibility COMING SOON.
- - Windows is tested and working, Mac is in Testing, Linux has not been tested yet.
+  - Windows is tested and working, Mac is in Testing, Linux has not been tested yet.
 - Custom icon: Located in assets/stocktool.ico and used for the application window and executables.
 
 ## Directory Structure
