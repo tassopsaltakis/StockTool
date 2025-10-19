@@ -1,5 +1,6 @@
 {
   "enabled_modules": [
+    "news_ticker",
     "winnerloser"
   ]
 }
