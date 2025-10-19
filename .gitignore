@@ -182,4 +182,3 @@ cython_debug/
 .idea/vcs.xml
 .idea/
 *.xml
-/.idea
