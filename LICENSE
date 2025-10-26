@@ -1,39 +1,56 @@
-Business Source License 1.1
-License text copyright © 2017 MariaDB Corporation Ab, All Rights Reserved. "Business Source License" is a trademark of MariaDB Corporation Ab.
+StockTool Source License 1.0 (SSL 1.0)
+Copyright © 2025 Anastasios Psaltakis — All Rights Reserved
 
-Terms
+1. Grant of Rights
+The Licensor (Anastasios Psaltakis) grants you a limited, non-exclusive, non-transferable, worldwide, royalty-free license to:
 
-The Licensor hereby grants you the right to copy, modify, create derivative works, redistribute, and make non-production use of the Licensed Work. The Licensor may make an Additional Use Grant, above, permitting limited production use.
+- View and modify the source code for personal, educational, or non-commercial purposes.
+- Fork this repository and submit pull requests back to the Licensor.
+- Redistribute unmodified or modified versions of the Licensed Work only under this same StockTool Source License 1.0 and with this license text included in full.
 
-Effective on the Change Date, or the fourth anniversary of the first publicly available distribution of a specific version of the Licensed Work under this License, whichever comes first, the Licensor hereby grants you rights under the terms of the Change License, and the rights granted in the paragraph above terminate.
+2. Commercial Use and Distribution
+Commercial use, resale, distribution, sublicensing, or any activity intended for monetary gain, internal business use, or integration into paid services is strictly prohibited unless explicitly authorized by the Licensor through a separate, written commercial license agreement.
 
-If your use of the Licensed Work does not comply with the requirements currently in effect as described in this License, you must purchase a commercial license from the Licensor, its affiliated entities, or authorized resellers, or you must refrain from using the Licensed Work.
+The Licensor retains exclusive rights to publish, sell, or otherwise monetize the Licensed Work.
 
-All copies of the original and modified Licensed Work, and derivative works of the Licensed Work, are subject to this License. This License applies separately for each version of the Licensed Work and the Change Date may vary for each version of the Licensed Work released by Licensor.
+Any commercial license must be agreed to in writing, signed by both parties, and will specify permitted use, duration, and fees.
 
-You must conspicuously display this License on each original or modified copy of the Licensed Work. If you receive the Licensed Work in original or modified form from a third party, the terms and conditions set forth in this License apply to your use of that work.
+3. Ownership and Attribution
+- The Licensed Work, including all original code, design, and documentation, is the exclusive property of Anastasios Psaltakis.
+- All contributors retain copyright over their individual contributions but agree that such contributions are automatically licensed to the Licensor under this same license for incorporation into the project.
+- You must preserve all copyright notices and this license text in any distributed copy or fork.
 
-Any use of the Licensed Work in violation of this License will automatically terminate your rights under this License for the current and all other versions of the Licensed Work.
+4. Contributions
+By submitting code, documentation, or other materials via pull requests or other methods, you agree that:
 
-This License does not grant you any right in any trademark or logo of Licensor or its affiliates (provided that you may use a trademark or logo of Licensor as expressly required by this License).
+- Your contributions are provided under this same StockTool Source License 1.0.
+- The Licensor has the perpetual right to use, modify, and relicense your contributions, including commercially.
+- No contributor shall claim ownership or royalties over derivative or commercial works produced by the Licensor.
 
-TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSED WORK IS PROVIDED ON AN "AS IS" BASIS. LICENSOR HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS OR IMPLIED, INCLUDING (WITHOUT LIMITATION) WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, AND TITLE.
+5. Warranty Disclaimer
+The Licensed Work is provided “as is”, without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement.
 
-MariaDB hereby grants you permission to use this License's text to license your works, and to refer to it using the trademark "Business Source License", as long as you comply with the Covenants of Licensor below.
+In no event shall the Licensor or contributors be liable for any claim, damages, or other liability arising from or in connection with the Licensed Work or the use of or dealings in the Licensed Work.
 
-Covenants of Licensor
+6. Termination
+Your rights under this license automatically terminate if you:
 
-In consideration of the right to use this License's text and the "Business Source License" name and trademark, Licensor covenants to MariaDB, and to all other recipients of the licensed work to be provided by Licensor:
+- Violate any of its terms, including unauthorized commercial use,
+- Remove or alter copyright or license notices, or
+- Distribute the Licensed Work under a different license.
 
-1. To specify as the Change License the GPL Version 2.0 or any later version, or a license that is compatible with GPL Version 2.0 or a later version, where "compatible" means that software provided under the Change License can be included in a program with software provided under GPL Version 2.0 or a later version. Licensor may specify additional Change Licenses without limitation.
-2. To either: (a) specify an additional grant of rights to use that does not impose any additional restriction on the right granted in this License, as the Additional Use Grant; or (b) insert the text "None".
-3. To specify a Change Date.
-4. Not to modify this License in any other way.
+Upon termination, you must immediately cease use and destroy all copies of the Licensed Work in your possession.
 
+7. License Continuity
+- This license applies to all copies, forks, or redistributions of the Licensed Work.
+- You may not sublicense, relicense, or otherwise change the terms of this license for any portion of the code.
+- Any attempt to relicense or remove this license text is void.
 
-Copyright (C) 2025 Anastasios Psaltakis
-Use of this software is govered by the Business Source License included in the LICENSE.TXT file and at www.mariadb.com/bsl11.
+8. Governing Law
+This license shall be governed by and construed in accordance with the laws of the State of Arizona, USA, without regard to its conflict-of-law principles.
 
-Change Date: 10/19/2025
+9. Version and Updates
+This is version 1.0 of the StockTool Source License.
+Future versions may be published by the Licensor to clarify terms or extend coverage, but this version will remain valid for any code released under it.
 
-On the date above, in accordance with the Business Source License, use of this software will be governed by the open source license specified in the LICENSE.TXT file.
+For commercial licensing inquiries, contact the Licensor directly.
