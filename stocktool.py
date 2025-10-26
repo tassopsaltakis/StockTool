@@ -13,7 +13,7 @@ from pathlib import Path
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 APP_NAME = "StockTool"
-APP_VERSION = "1.0.0"  # optional, used for Windows AUMID
+APP_VERSION = "1.1"  # optional, used for Windows AUMID
 SETTINGS_FILE = "settings.json"
 MODULES_DIR = "modules"
 
