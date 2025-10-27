@@ -34,11 +34,43 @@ import pyqtgraph as pg
 pg.setConfigOptions(
     antialias=False,      # faster lines
     useOpenGL=True,       # hardware-accelerated
-    # comment out the next two if you prefer your OS theme
     foreground='w',       # white text/ticks
     background='k'        # dark background
 )
 
+# ---- Compact UI stylesheet (global density reduction) ----
+DENSITY_QSS = """
+* { font-size: 11px; }
+
+QWidget { padding: 0; margin: 0; }
+
+QLabel { padding: 0 2px; }
+
+QLineEdit, QSpinBox, QComboBox, QPlainTextEdit, QTextEdit {
+  padding: 3px 6px;
+  min-height: 0;
+}
+
+QPushButton {
+  padding: 3px 8px;
+  min-height: 0;
+}
+
+QTabWidget::pane { padding: 0; margin: 0; }
+QTabBar::tab { padding: 4px 10px; min-height: 22px; }
+
+QGroupBox { margin-top: 10px; }
+QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }
+
+QHeaderView::section { padding: 2px 6px; }
+QTableView::item { padding: 2px 4px; }
+
+QToolTip { font-size: 11px; padding: 4px 6px; }
+
+QScrollBar:vertical, QScrollBar:horizontal {
+  margin: 0; padding: 0; min-width: 10px; min-height: 10px;
+}
+"""
 
 # ====================== Data fetch ======================
 
@@ -133,7 +165,7 @@ class PGChart(QtWidgets.QWidget):
         super().__init__(parent)
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(6)
+        lay.setSpacing(4)
 
         # Plot widget with custom axes
         self.plot = pg.PlotWidget(axisItems={'bottom': DateAxis(), 'left': PriceAxis()})
@@ -142,7 +174,7 @@ class PGChart(QtWidgets.QWidget):
         self.plot.setLabel('left', 'Price')
         self.plot.setMouseEnabled(x=True, y=True)
         self.plot.setClipToView(True)
-        self.plot.getViewBox().setDefaultPadding(0.05)  # nice margin
+        self.plot.getViewBox().setDefaultPadding(0.05)
 
         # Crosshair items
         self._vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen((180, 180, 180, 120)))
@@ -152,9 +184,9 @@ class PGChart(QtWidgets.QWidget):
 
         # Readout
         self.readout = QtWidgets.QLabel("Hover for values")
-        self.readout.setStyleSheet("color: gray;")
+        self.readout.setStyleSheet("color: gray; padding: 0 2px;")
 
-        # Series toggle panel (we rely on this instead of a legend)
+        # Series toggle panel
         self.series_group = QtWidgets.QGroupBox("Series")
         self.series_layout = QtWidgets.QVBoxLayout(self.series_group)
         self.series_layout.setContentsMargins(8, 8, 8, 8)
@@ -170,76 +202,51 @@ class PGChart(QtWidgets.QWidget):
         lay.addWidget(self.series_group, 0)
 
         # Data holders
-        self._series: Dict[str, pg.PlotCurveItem] = {}   # label -> curve
-        self._data_cache: Dict[str, Tuple['np.ndarray', 'np.ndarray']] = {}  # label -> (xs, ys)
+        self._series: Dict[str, pg.PlotCurveItem] = {}
+        self._data_cache: Dict[str, Tuple['np.ndarray', 'np.ndarray']] = {}
         self._palette_idx = 0
-        self._palette = self._make_palette()  # rich, diverse palette
+        self._palette = self._make_palette()
 
         # Crosshair / hover
         self.plot.setMouseTracking(True)
         self.plot.scene().sigMouseMoved.connect(self._on_mouse_moved)
 
-    # ---------- color utilities ----------
     def _make_palette(self):
-
         def qc(r, g, b, a=255):
             return QtGui.QColor(int(r), int(g), int(b), int(a))
-
-        # Okabe–Ito (10) — colorblind safe
         okabe_ito = [
-            qc(  0, 114, 178),  # blue
-            qc(213,  94,   0),  # vermillion
-            qc( 86, 180, 233),  # sky blue
-            qc(230, 159,   0),  # orange
-            qc(  0, 158, 115),  # bluish green
-            qc(240, 228,  66),  # yellow
-            qc(204, 121, 167),  # reddish purple
-            qc(  0,   0,   0),  # black (use sparingly)
-            qc(148,  52, 110),  # magenta-ish (extra)
-            qc( 50,  50,  50),  # dark gray (extra)
+            qc(0,114,178), qc(213,94,0), qc(86,180,233), qc(230,159,0),
+            qc(0,158,115), qc(240,228,66), qc(204,121,167), qc(0,0,0),
+            qc(148,52,110), qc(50,50,50),
         ]
-
-        # Tableau 20 (subset reordered for contrast)
         tableau20 = [
-            qc( 31, 119, 180), qc(255, 127, 14),  qc( 44, 160,  44), qc(214,  39,  40),
-            qc(148, 103, 189), qc(140,  86, 75),  qc(227, 119, 194), qc(127, 127, 127),
-            qc(188, 189,  34), qc( 23, 190, 207), qc(174, 199, 232), qc(255, 187, 120),
-            qc(152, 223, 138), qc(255, 152, 150), qc(197, 176, 213), qc(196, 156, 148),
-            qc(247, 182, 210), qc(199, 199, 199), qc(219, 219, 141), qc(158, 218, 229)
+            qc(31,119,180), qc(255,127,14), qc(44,160,44), qc(214,39,40),
+            qc(148,103,189), qc(140,86,75), qc(227,119,194), qc(127,127,127),
+            qc(188,189,34), qc(23,190,207), qc(174,199,232), qc(255,187,120),
+            qc(152,223,138), qc(255,152,150), qc(197,176,213), qc(196,156,148),
+            qc(247,182,210), qc(199,199,199), qc(219,219,141), qc(158,218,229)
         ]
-
-        # Start with curated sets
         palette = []
         for c in okabe_ito + tableau20:
-            # avoid very dark near-black on black backgrounds
             if c.red() < 30 and c.green() < 30 and c.blue() < 30:
                 c = qc(90, 90, 90)
             palette.append(c)
-
-        # Then add a golden-ratio HSV sweep for virtually unlimited distinct colors
-        h = 0.11  # seed hue (not orange)
+        h = 0.11
         gr = 0.61803398875
-        for _ in range(120):  # add 120 more distinct hues
+        for _ in range(120):
             h = (h + gr) % 1.0
-            # Keep saturation/value high for dark bg; nudge away from orange range [0.05..0.13]
             if 0.05 <= h <= 0.13:
                 h = (h + 0.15) % 1.0
-            sat = 0.95
-            val = 0.98
-            c = QtGui.QColor.fromHsvF(h, sat, val, 1.0)
+            c = QtGui.QColor.fromHsvF(h, 0.95, 0.98, 1.0)
             palette.append(c)
-
         return palette
 
     def _next_pen(self) -> pg.mkPen:
-        """Pick the next highly distinct color from our big palette."""
         color = self._palette[self._palette_idx % len(self._palette)]
         self._palette_idx += 1
         return pg.mkPen(color, width=2)
 
-    # ---------- lifecycle ----------
     def clear(self):
-        """Remove only our curves; keep crosshair intact."""
         for item in list(self._series.values()):
             try:
                 self.plot.removeItem(item)
@@ -247,9 +254,8 @@ class PGChart(QtWidgets.QWidget):
                 pass
         self._series.clear()
         self._data_cache.clear()
-        self._palette_idx = 0  # restart palette cycle
+        self._palette_idx = 0
 
-        # Clear series panel checkboxes (except note + stretch)
         while self.series_layout.count() > 2:
             item = self.series_layout.takeAt(1)
             w = item.widget()
@@ -257,19 +263,15 @@ class PGChart(QtWidgets.QWidget):
                 w.setParent(None)
                 w.deleteLater()
 
-        # Ensure crosshair lines are present
         if self._vline not in self.plot.items():
             self.plot.addItem(self._vline, ignoreBounds=True)
         if self._hline not in self.plot.items():
             self.plot.addItem(self._hline, ignoreBounds=True)
 
-        # Reset view autorange
         self.plot.enableAutoRange('xy', True)
 
-    # ---------- data / series ----------
     def add_line(self, label: str, dates_utc_str: List[str], y_values: List[float]):
         import numpy as np
-        # Convert to epoch seconds (UTC)
         xs = np.array(
             [dt.datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=dt.UTC).timestamp() for s in dates_utc_str],
             dtype=float
@@ -277,37 +279,27 @@ class PGChart(QtWidgets.QWidget):
         ys = np.array(y_values, dtype=float)
 
         pen = self._next_pen()
-
-        # Use PlotCurveItem (avoids PlotDataItem parent-change bugs)
         curve = pg.PlotCurveItem(
             x=xs, y=ys, pen=pen,
-            antialias=False,   # fastest
-            clipToView=True    # draw only the visible part
+            antialias=False,
+            clipToView=True
         )
         self.plot.addItem(curve)
 
-        # Cache & toggles
         self._series[label] = curve
         self._data_cache[label] = (xs, ys)
         self._add_series_checkbox(label, curve)
-
-        # Expand view to include new data
         self.plot.enableAutoRange('xy', True)
 
     def _add_series_checkbox(self, label: str, curve: pg.PlotCurveItem):
         cb = QtWidgets.QCheckBox(label)
         cb.setChecked(True)
-
         def _toggle(_state):
             curve.setVisible(cb.isChecked())
-            # Re-autoscale on visibility change
             self.plot.enableAutoRange('xy', True)
-
         cb.stateChanged.connect(_toggle)
-        # insert before final stretch
         self.series_layout.insertWidget(self.series_layout.count() - 1, cb)
 
-    # ---------- interaction ----------
     def _on_mouse_moved(self, pos):
         if not self._series:
             self.readout.setText("Hover for values")
@@ -319,11 +311,9 @@ class PGChart(QtWidgets.QWidget):
         x = float(mouse_point.x())
         y = float(mouse_point.y())
 
-        # Move crosshair
         self._vline.setPos(x)
         self._hline.setPos(y)
 
-        # Build a multi-series readout at nearest X
         lines = []
         try:
             date_str = dt.datetime.fromtimestamp(x, dt.UTC).strftime("%Y-%m-%d")
@@ -341,7 +331,6 @@ class PGChart(QtWidgets.QWidget):
             if idx > 0 and abs(xs[idx] - x) > abs(xs[idx - 1] - x):
                 idx -= 1
             val = ys[idx]
-            # Only show if series is visible
             curve = self._series.get(label)
             if curve is not None and curve.isVisible():
                 lines.append(f"{label}: {val:,.2f}")
@@ -355,11 +344,11 @@ class StockTool(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(APP_NAME)
-        self.setMinimumSize(1200, 780)
+        self.setMinimumSize(1100, 700)
 
         # State (multi-asset)
-        self.data_by_symbol: Dict[str, List[dict]] = {}  # {"AAPL": [...], "MSFT": [...]}
-        self.tickers: List[str] = []                     # requested tickers, order preserved
+        self.data_by_symbol: Dict[str, List[dict]] = {}
+        self.tickers: List[str] = []
 
         self.settings = load_settings()
         self.loaded_modules: Dict[str, BaseModule] = {}
@@ -372,38 +361,53 @@ class StockTool(QtWidgets.QWidget):
 
     # ---------------- UI ----------------
     def _build_ui(self):
+        # Tabs still at root
         self.tabs = QtWidgets.QTabWidget(self)
+        self.tabs.setDocumentMode(True)
+        self.tabs.tabBar().setElideMode(QtCore.Qt.TextElideMode.ElideRight)
+
         main_tab = QtWidgets.QWidget()
         modules_tab = QtWidgets.QWidget()
         self.tabs.addTab(main_tab, "Main")
         self.tabs.addTab(modules_tab, "Modules")
 
         root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 0)
+        root.setContentsMargins(6, 6, 6, 6)
+        root.setSpacing(4)
         root.addWidget(self.tabs)
 
         # ==== Main tab ====
-        layout = QtWidgets.QVBoxLayout(main_tab)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(10)
+        main_layout = QtWidgets.QVBoxLayout(main_tab)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.setSpacing(6)
+
+        # Vertical splitter: top = main content; bottom = scrollable modules page
+        self.vertical_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+        self.vertical_split.setChildrenCollapsible(False)
+        self.vertical_split.setHandleWidth(6)
+
+        # -------- Main content (top of vertical splitter) --------
+        self.main_container = QtWidgets.QWidget()
+        top = QtWidgets.QVBoxLayout(self.main_container)
+        top.setContentsMargins(0, 0, 0, 0)
+        top.setSpacing(6)
 
         # Top input bar
         row = QtWidgets.QHBoxLayout()
-        row.setSpacing(8)
+        row.setSpacing(6)
 
         self.ticker_edit = QtWidgets.QLineEdit()
         self.ticker_edit.setPlaceholderText("Tickers (comma-separated, e.g., AAPL, MSFT, NVDA, ^IXIC)")
         self.ticker_edit.setText("QQQ")
 
-        # Days input with "days" suffix label
         days_layout = QtWidgets.QHBoxLayout()
         days_layout.setContentsMargins(0, 0, 0, 0)
-        days_layout.setSpacing(4)
+        days_layout.setSpacing(3)
 
         self.days_edit = QtWidgets.QLineEdit()
         self.days_edit.setPlaceholderText("e.g. 7, 365, 5000")
         self.days_edit.setText("365")
-        self.days_edit.setMinimumWidth(160)
+        self.days_edit.setMinimumWidth(120)
 
         days_label = QtWidgets.QLabel("days")
         days_label.setStyleSheet("color: gray;")
@@ -414,68 +418,108 @@ class StockTool(QtWidgets.QWidget):
         self.fetch_btn = QtWidgets.QPushButton("Fetch")
         self.fetch_btn.clicked.connect(self.on_fetch)
 
-        # Enter triggers fetch
         self.ticker_edit.returnPressed.connect(self.fetch_btn.click)
         self.days_edit.returnPressed.connect(self.fetch_btn.click)
 
         row.addWidget(QtWidgets.QLabel("Tickers:"))
         row.addWidget(self.ticker_edit, 3)
-        row.addSpacing(10)
+        row.addSpacing(8)
         row.addWidget(QtWidgets.QLabel("History:"))
         row.addLayout(days_layout, 1)
-        row.addSpacing(10)
+        row.addSpacing(8)
         row.addWidget(self.fetch_btn, 0)
 
-        # Splitter for table + chart
-        splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        # Horizontal splitter for table + chart (inside the main container)
+        hsplit = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        hsplit.setHandleWidth(6)
+        hsplit.setChildrenCollapsible(False)
 
-        # Table: includes Ticker col
+        # Table
         self.table = QtWidgets.QTableWidget(0, 4)
         self.table.setHorizontalHeaderLabels(["Ticker", "Date", "Open", "Close"])
-        self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
-        self.table.setAlternatingRowColors(True)
-
-        # Chart right panel
-        right = QtWidgets.QWidget()
-        right_lay = QtWidgets.QVBoxLayout(right)
-        right_lay.setContentsMargins(0, 0, 0, 0)
-        right_lay.setSpacing(8)
-
-        self.chart = PGChart()
-        right_lay.addWidget(self.chart)
+        self._compact_table(self.table)
+        hh = self.table.horizontalHeader()
+        hh.setStretchLastSection(False)
+        hh.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        hh.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        hh.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        hh.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeMode.Stretch)
 
         left = QtWidgets.QWidget()
         left_lay = QtWidgets.QVBoxLayout(left)
         left_lay.setContentsMargins(0, 0, 0, 0)
+        left_lay.setSpacing(0)
         left_lay.addWidget(self.table)
 
-        splitter.addWidget(left)
-        splitter.addWidget(right)
-        splitter.setSizes([520, 680])
+        # Chart panel
+        right = QtWidgets.QWidget()
+        right_lay = QtWidgets.QVBoxLayout(right)
+        right_lay.setContentsMargins(0, 0, 0, 0)
+        right_lay.setSpacing(4)
+        self.chart = PGChart()
+        right_lay.addWidget(self.chart)
+
+        hsplit.addWidget(left)
+        hsplit.addWidget(right)
+        # Give the chart more room
+        hsplit.setStretchFactor(0, 1)  # table
+        hsplit.setStretchFactor(1, 3)  # chart 3x table
 
         # Status
         self.status = QtWidgets.QLabel("Ready.")
         self.status.setStyleSheet("color: gray;")
 
-        # Modules Area
-        modules_group = QtWidgets.QGroupBox("Modules Area")
-        self.modules_area_layout = QtWidgets.QVBoxLayout(modules_group)
-        self.modules_area_layout.setContentsMargins(10, 8, 10, 10)
-        self.modules_area_layout.setSpacing(8)
+        top.addLayout(row)
+        top.addWidget(hsplit, 1)
+        top.addWidget(self.status)
 
-        layout.addLayout(row)
-        layout.addWidget(splitter, 1)
-        layout.addWidget(self.status)
-        layout.addWidget(modules_group)
+        # -------- Modules area (bottom of vertical splitter) --------
+        # Scrollable, “infinite” vertical page so modules can render at full size.
+        self.modules_scroll = QtWidgets.QScrollArea()
+        self.modules_scroll.setWidgetResizable(True)
+        self.modules_scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self.modules_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        # ==== Modules tab ====
+        # The scrollable content widget
+        self.modules_content = QtWidgets.QWidget()
+        self.modules_scroll.setWidget(self.modules_content)
+
+        self.modules_vbox = QtWidgets.QVBoxLayout(self.modules_content)
+        self.modules_vbox.setContentsMargins(8, 8, 8, 16)
+        self.modules_vbox.setSpacing(8)
+
+        # Optional title/legend at the top of the scroll page
+        modules_title = QtWidgets.QLabel("Modules")
+        modules_title.setStyleSheet("font-weight:600;font-size:13px;")
+        self.modules_vbox.addWidget(modules_title)
+
+        self.crypto_note = QtWidgets.QLabel("Note: For cryptocurrencies, Change % is since your local midnight.")
+        self.crypto_note.setStyleSheet("color:#a2a9b6;font-size:11px;")
+        self.modules_vbox.addWidget(self.crypto_note)
+
+        # Keep content pinned to the top; stretch at the end
+        self.modules_vbox.addStretch(1)
+
+        # Put the two sections into the vertical splitter
+        self.vertical_split.addWidget(self.main_container)
+        self.vertical_split.addWidget(self.modules_scroll)
+
+        # Bias towards main content; modules scroll instead of squashing
+        self.vertical_split.setStretchFactor(0, 3)  # main
+        self.vertical_split.setStretchFactor(1, 2)  # modules
+        # Optional: initial sizes (pixels)
+        # self.vertical_split.setSizes([900, 250])
+
+        # Add splitter to tab
+        main_layout.addWidget(self.vertical_split, 1)
+
+        # ==== Modules tab (list & toggles) ====
         self._build_modules_tab(modules_tab)
 
     def _build_modules_tab(self, tab_widget: QtWidgets.QWidget):
         lay = QtWidgets.QVBoxLayout(tab_widget)
-        lay.setContentsMargins(14, 14, 14, 14)
-        lay.setSpacing(10)
+        lay.setContentsMargins(8, 8, 8, 8)
+        lay.setSpacing(6)
 
         info = QtWidgets.QLabel(
             "Modules found in the 'modules' folder appear here.\n"
@@ -486,10 +530,11 @@ class StockTool(QtWidgets.QWidget):
 
         self.modules_list = QtWidgets.QTableWidget(0, 3)
         self.modules_list.setHorizontalHeaderLabels(["Enabled", "Module", "Description"])
-        self.modules_list.verticalHeader().setVisible(False)
         self.modules_list.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         self.modules_list.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         self.modules_list.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self._compact_table(self.modules_list)
+
         lay.addWidget(self.modules_list, 1)
 
         self.save_btn = QtWidgets.QPushButton("Save")
@@ -497,7 +542,6 @@ class StockTool(QtWidgets.QWidget):
         lay.addWidget(self.save_btn, 0, QtCore.Qt.AlignmentFlag.AlignRight)
 
     # --------------- Module management ---------------
-
     def _discover_modules(self):
         if not os.path.isdir(MODULES_DIR):
             os.makedirs(MODULES_DIR, exist_ok=True)
@@ -593,7 +637,8 @@ class StockTool(QtWidgets.QWidget):
         try:
             instance: BaseModule = spec["factory"]()
             self.loaded_modules[module_id] = instance
-            self.modules_area_layout.addWidget(instance)
+            # Insert above the final stretch in the scrollable column
+            self.modules_vbox.insertWidget(self.modules_vbox.count() - 1, instance)
             instance.on_enable()
             if self.data_by_symbol:
                 instance.on_data(self.data_by_symbol, self.tickers)
@@ -688,12 +733,11 @@ class StockTool(QtWidgets.QWidget):
                 print(f"[Module on_data error]\n{traceback.format_exc()}")
 
     def _populate_table_multi(self, data_by_symbol: Dict[str, List[dict]]):
-        # Flatten into rows with Ticker column; sort by Ticker then Date
         flat = []
         for sym, rows in data_by_symbol.items():
             for r in rows:
                 flat.append((sym, r["date"], r["open"], r["close"]))
-        flat.sort(key=lambda x: (x[0], x[1]))  # by ticker, then date
+        flat.sort(key=lambda x: (x[0], x[1]))
 
         self.table.setRowCount(len(flat))
         for i, (sym, date, opn, cls) in enumerate(flat):
@@ -708,7 +752,6 @@ class StockTool(QtWidgets.QWidget):
 
     def _plot_multi(self, data_by_symbol: Dict[str, List[dict]]):
         self.chart.clear()
-        # Add each series (Close) to the chart
         for sym, rows in data_by_symbol.items():
             if not rows:
                 continue
@@ -716,7 +759,14 @@ class StockTool(QtWidgets.QWidget):
             closes = [r["close"] for r in rows]
             self.chart.add_line(f"{sym} Close", dates, closes)
 
-    # Clean up
+    def _compact_table(self, tbl: QtWidgets.QTableWidget):
+        tbl.setAlternatingRowColors(True)
+        tbl.setWordWrap(False)
+        tbl.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight)
+        tbl.verticalHeader().setDefaultSectionSize(22)
+        tbl.verticalHeader().setVisible(False)
+        tbl.horizontalHeader().setHighlightSections(False)
+
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         try:
             pass
@@ -731,12 +781,11 @@ def _set_app_icon_and_aumid(app: QtWidgets.QApplication, window: QtWidgets.QWidg
     ico_path = Path(__file__).parent / "assets" / "stocktool.ico"
     if ico_path.exists():
         icon = QtGui.QIcon(str(ico_path))
-        app.setWindowIcon(icon)     # affects taskbar / Alt+Tab in many cases
-        window.setWindowIcon(icon)  # explicit for title bar
+        app.setWindowIcon(icon)
+        window.setWindowIcon(icon)
     else:
         print(f"⚠️ Icon not found: {ico_path}")
 
-    # Windows taskbar grouping (AUMID)
     if sys.platform.startswith("win"):
         try:
             import ctypes
@@ -749,6 +798,9 @@ def _set_app_icon_and_aumid(app: QtWidgets.QApplication, window: QtWidgets.QWidg
 def main():
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
+    app.setStyle("Fusion")
+    app.setStyleSheet(DENSITY_QSS)
+
     w = StockTool()
     _set_app_icon_and_aumid(app, w)
     w.show()

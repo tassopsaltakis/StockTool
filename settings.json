@@ -1,6 +1,6 @@
 {
   "enabled_modules": [
-    "news_ticker",
+    "live_price_tracker",
     "winnerloser"
   ]
 }
