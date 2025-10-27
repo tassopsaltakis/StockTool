@@ -60,8 +60,11 @@ pyinstaller `
   --add-data "modules;modules" `
   --collect-data pyqtgraph `
   --collect-submodules pyqtgraph `
-  --distpath "./build/StockTool" `
+  --workpath ".\pyi_build" `
+  --specpath ".\pyi_spec" `
+  --distpath ".\dist" `
   stocktool.py
+
 ```
 
 
